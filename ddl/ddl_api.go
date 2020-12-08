@@ -2706,8 +2706,8 @@ func checkAndCreateNewColumn(ctx sessionctx.Context, ti ast.Ident, schema *model
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-
-	originDefVal, err := generateOriginDefaultValue(col.ToInfo())
+	mode := ctx.GetSessionVars().SQLMode
+	originDefVal, err := generateOriginDefaultValue(col.ToInfo(), mode.HasNoZeroDateMode())
 	if err != nil {
 		return nil, errors.Trace(err)
 	}

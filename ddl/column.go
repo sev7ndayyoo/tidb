@@ -553,7 +553,7 @@ func checkDropColumnForStatePublic(tblInfo *model.TableInfo, colInfo *model.Colu
 		// But currently will be ok, because we can't cancel the drop column job when the job is running,
 		// so the column will be dropped succeed and client will never see the wrong default value of the dropped column.
 		// More info about this problem, see PR#9115.
-		originDefVal, err := generateOriginDefaultValue(colInfo)
+		originDefVal, err := generateOriginDefaultValue(colInfo, false)
 		if err != nil {
 			return err
 		}
@@ -1661,7 +1661,7 @@ func modifyColsFromNull2NotNull(w *worker, dbInfo *model.DBInfo, tblInfo *model.
 	return nil
 }
 
-func generateOriginDefaultValue(col *model.ColumnInfo) (interface{}, error) {
+func generateOriginDefaultValue(col *model.ColumnInfo, sqlModeCheck bool) (interface{}, error) {
 	var err error
 	odValue := col.GetDefaultValue()
 	if odValue == nil && mysql.HasNotNullFlag(col.Flag) {
@@ -1674,6 +1674,12 @@ func generateOriginDefaultValue(col *model.ColumnInfo) (interface{}, error) {
 			}
 			defVal := types.NewCollateMysqlEnumDatum(defEnum, col.Collate)
 			return defVal.ToString()
+		case mysql.TypeDate:
+			if sqlModeCheck {
+				err = table.ErrTruncatedWrongValueForField.GenWithStackByArgs(types.TypeStr(col.Tp), "0000-00-00", col.Name, col.ID+1)
+				return nil, err
+			}
+			fallthrough
 		default:
 			zeroVal := table.GetZeroValue(col)
 			odValue, err = zeroVal.ToString()

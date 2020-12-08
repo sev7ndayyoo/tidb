@@ -22,6 +22,7 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
+	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/errno"
 	"github.com/pingcap/tidb/executor"
@@ -1563,4 +1564,17 @@ func (s *testSuite10) TestBinaryLiteralInsertToSet(c *C) {
 	tk.MustExec("create table bintest (h set(0x61, '1', 'b')) character set utf8mb4")
 	tk.MustExec("insert into bintest(h) values(0x61)")
 	tk.MustQuery("select * from bintest").Check(testkit.Rows("a"))
+}
+
+func (s *testSuite10) TestAddColumnNullDate(c *C) {
+	tk := testkit.NewTestKit(c, s.store)
+	tk.MustExec("use test")
+	tk.MustExec("set sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';")
+	tk.MustExec("drop table if exists t")
+	tk.MustExec("create table t (d int)")
+	tk.MustExec("insert into t values(1)")
+	tk.MustGetErrCode("alter table t add column e date not null", mysql.ErrTruncatedWrongValueForField)
+	tk.MustExec("alter table t add column (e date default '1949-10-01')")
+	tk.MustExec("set sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';")
+	tk.MustExec("alter table t add column f date not null")
 }
